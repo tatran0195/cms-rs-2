@@ -126,6 +126,33 @@ Following layering discipline:
    - Sites: http://localhost:3000
    - Frontend: http://localhost:3001
 
+### 🛠️ Common Workflows with Makefile
+
+A root `Makefile` is provided to streamline daily development, build, test, and database workflows:
+
+```bash
+# View all available targets
+make help
+
+# Development
+make dev                # Run backend API server in debug mode
+make dev-worker         # Run background worker in debug mode
+make dev-frontend       # Run frontend web app dev server (port 4310)
+make install            # Install workspace dependencies
+
+# Build & Test
+make build              # Build release backend binaries and frontend bundle
+make test               # Run all Rust workspace and frontend tests
+make check              # Fast workspace compilation check
+make lint               # Run Rust clippy and frontend TypeScript typecheck
+make fmt                # Format Rust codebase
+
+# Database (SQLx)
+make db-migrate         # Run pending SQLx migrations
+make db-reset           # Reset and re-migrate database
+make db-status          # Check migration status
+```
+
 ---
 
 ## 📦 Project Structure

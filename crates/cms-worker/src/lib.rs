@@ -373,6 +373,7 @@ mod tests {
             smtp_username: None,
             smtp_password: None,
             smtp_use_tls: false,
+            smtp_plain_no_tls: false,
             from_email: Some("admin@example.com".to_string()),
             from_name: Some("CMS Admin".to_string()),
         };
@@ -387,6 +388,7 @@ mod tests {
             smtp_username: Some("user".to_string()),
             smtp_password: Some("pass".to_string()),
             smtp_use_tls: false,
+            smtp_plain_no_tls: false,
             from_email: Some("admin@example.com".to_string()),
             from_name: Some("CMS Admin".to_string()),
         };
