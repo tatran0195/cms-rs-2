@@ -878,6 +878,149 @@ async fn run_flow(state: Arc<AppState>, seed: &Seed) -> anyhow::Result<()> {
         "reject page-tree cycle atomically",
     )?;
 
+    // Real operations test for docs side-tree handling all possible cases:
+    // 1. Un-nest draft page from group to root level
+    let reorder_unnest = expect_status(
+        request(
+            &app,
+            Method::POST,
+            &format!("/api/app/projects/{project_id}/pages/reorder"),
+            Some(&cookie),
+            Some(json!({
+                "items": [
+                    { "id": arabic_group_id, "parentId": null, "position": 0 },
+                    { "id": arabic_page_id, "parentId": arabic_group_id, "position": 0 },
+                    { "id": _draft_page_id, "parentId": null, "position": 1 },
+                ]
+            })),
+        )
+        .await?,
+        StatusCode::OK,
+        "un-nest draft page to root",
+    )?;
+    anyhow::ensure!(reorder_unnest["data"]["success"] == true);
+
+    let draft_row: (Option<String>, String) = sqlx::query_as(
+        r#"SELECT parent_id, path FROM "Page" WHERE id = $1"#,
+    )
+    .bind(&_draft_page_id)
+    .fetch_one(&state.biz_context.pool)
+    .await?;
+    anyhow::ensure!(draft_row.0.is_none(), "draft page parent_id must be null after un-nesting");
+    anyhow::ensure!(draft_row.1 == "/draft", "draft page path must be /draft at root");
+
+    // 2. Re-nest draft page back under arabic group with new position
+    let reorder_renest = expect_status(
+        request(
+            &app,
+            Method::POST,
+            &format!("/api/app/projects/{project_id}/pages/reorder"),
+            Some(&cookie),
+            Some(json!({
+                "items": [
+                    { "id": arabic_group_id, "parentId": null, "position": 0 },
+                    { "id": _draft_page_id, "parentId": arabic_group_id, "position": 0 },
+                    { "id": arabic_page_id, "parentId": arabic_group_id, "position": 1 },
+                ]
+            })),
+        )
+        .await?,
+        StatusCode::OK,
+        "re-nest draft page back under arabic group",
+    )?;
+    anyhow::ensure!(reorder_renest["data"]["success"] == true);
+
+    let draft_nested_row: (Option<String>, String) = sqlx::query_as(
+        r#"SELECT parent_id, path FROM "Page" WHERE id = $1"#,
+    )
+    .bind(&_draft_page_id)
+    .fetch_one(&state.biz_context.pool)
+    .await?;
+    anyhow::ensure!(
+        draft_nested_row.0.as_deref() == Some(&arabic_group_id),
+        "draft page parent_id must be arabic_group_id"
+    );
+    anyhow::ensure!(
+        draft_nested_row.1.ends_with("/draft"),
+        "draft page path must end with /draft"
+    );
+
+    // 3. Reject duplicate IDs in reorder request
+    expect_status(
+        request(
+            &app,
+            Method::POST,
+            &format!("/api/app/projects/{project_id}/pages/reorder"),
+            Some(&cookie),
+            Some(json!({
+                "items": [
+                    { "id": arabic_group_id, "parentId": null, "position": 0 },
+                    { "id": arabic_group_id, "parentId": null, "position": 1 },
+                ]
+            })),
+        )
+        .await?,
+        StatusCode::BAD_REQUEST,
+        "reject duplicate page id in reorder request",
+    )?;
+
+    // 4. Reject self-parenting
+    expect_status(
+        request(
+            &app,
+            Method::POST,
+            &format!("/api/app/projects/{project_id}/pages/reorder"),
+            Some(&cookie),
+            Some(json!({
+                "items": [
+                    { "id": arabic_group_id, "parentId": arabic_group_id, "position": 0 },
+                ]
+            })),
+        )
+        .await?,
+        StatusCode::CONFLICT,
+        "reject self-parenting",
+    )?;
+
+    // 5. Reject non-existent parent
+    expect_status(
+        request(
+            &app,
+            Method::POST,
+            &format!("/api/app/projects/{project_id}/pages/reorder"),
+            Some(&cookie),
+            Some(json!({
+                "items": [
+                    { "id": arabic_page_id, "parentId": "non-existent-page-id", "position": 0 },
+                ]
+            })),
+        )
+        .await?,
+        StatusCode::CONFLICT,
+        "reject non-existent parent",
+    )?;
+
+    // 6. Reset tree to clean state before publishing
+    let reorder_final = expect_status(
+        request(
+            &app,
+            Method::POST,
+            &format!("/api/app/projects/{project_id}/pages/reorder"),
+            Some(&cookie),
+            Some(json!({
+                "items": [
+                    { "id": arabic_group_id, "parentId": null, "position": 0 },
+                    { "id": arabic_page_id, "parentId": arabic_group_id, "position": 1 },
+                    { "id": _draft_page_id, "parentId": arabic_group_id, "position": 2 },
+                ]
+            })),
+        )
+        .await?,
+        StatusCode::OK,
+        "final reorder Arabic page tree",
+    )?;
+    anyhow::ensure!(reorder_final["data"]["success"] == true);
+
     // Publishing runs the real renderer and writes branch/language-scoped
     // artifacts into the configured storage backend.
     let deployment = expect_status(
@@ -950,6 +1093,16 @@ async fn run_flow(state: Arc<AppState>, seed: &Seed) -> anyhow::Result<()> {
         .is_some());
     anyhow::ensure!(first_version == 1);
     anyhow::ensure!(first_pages == 2);
+    let english_page_listing = cms_db::deployment::DeploymentQueries::get_snapshot_page_listing(
+        &state.biz_context.pool,
+        deployment_id,
+        &english_language_id,
+    )
+    .await?;
+    anyhow::ensure!(english_page_listing.len() == 1);
+    anyhow::ensure!(english_page_listing[0].page_id == english_page_id);
+    anyhow::ensure!(english_page_listing[0].path.trim_matches('/') == "guide/start");
+    anyhow::ensure!(english_page_listing[0].title == "Getting started");
     let expected_admin_page_count: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*) FROM "Page" WHERE project_id = $1 AND UPPER(kind) = 'PAGE'"#,
     )
@@ -1016,6 +1169,13 @@ async fn run_flow(state: Arc<AppState>, seed: &Seed) -> anyhow::Result<()> {
         "<link rel=\"canonical\" href=\"https://{public_host}/guide/start\">"
     )));
     anyhow::ensure!(!ssr_html.contains("DO NOT SHIP"));
+    let (root_listing_status, root_listing_html) = site_request(&app, &public_host, "/").await?;
+    anyhow::ensure!(root_listing_status == StatusCode::OK);
+    anyhow::ensure!(root_listing_html.contains("Getting started"));
+    anyhow::ensure!(
+        !root_listing_html.contains("English release content"),
+        "root listing must render page metadata without loading Markdown bodies"
+    );
     let (sitemap_status, sitemap_body) = site_request(&app, &public_host, "/sitemap.xml").await?;
     anyhow::ensure!(
         sitemap_status == StatusCode::OK,

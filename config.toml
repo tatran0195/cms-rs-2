@@ -132,18 +132,14 @@ max_connections = 100
 rate_limit = 60
 
 [mailer]
-# Mailpit SMTP relay for local development (http://localhost:8025 for web UI)
-smtp_host = "localhost"
-smtp_port = 1025
-# No credentials required for Mailpit
-# smtp_username = ""
-# smtp_password = ""
-# Mailpit does not require TLS — use plain unencrypted SMTP
-smtp_use_tls = false
-smtp_plain_no_tls = true
-# Default from email address
-from_email = "no-reply@cms.local"
-# Default from display name
+# Gmail SMTP relay
+smtp_host = "smtp.gmail.com"
+smtp_port = 465
+smtp_username = "noreply.etechnostar@gmail.com"
+smtp_password = "ysmotxuaglyuysoe"
+smtp_use_tls = true
+smtp_plain_no_tls = false
+from_email = "noreply.etechnostar@gmail.com"
 from_name = "CMS"
 
 [rate_limit]

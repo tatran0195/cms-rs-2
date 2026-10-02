@@ -45,14 +45,14 @@ import type { PageNode } from "@/hooks/api";
 
 const INDENT = 16;
 
-interface Flat {
+export interface Flat {
   id: string;
   parentId: string | null;
   depth: number;
   node: PageNode;
 }
 
-function flatten(pages: PageNode[]): Flat[] {
+export function flatten(pages: PageNode[]): Flat[] {
   const byParent = new Map<string, PageNode[]>();
   for (const page of pages) {
     const key = page.parentId ?? "__root";
@@ -75,7 +75,7 @@ function flatten(pages: PageNode[]): Flat[] {
 }
 
 /** Hide the descendants of `id` from the list (so a subtree drags as a unit). */
-function removeDescendants(items: Flat[], id: string): Flat[] {
+export function removeDescendants(items: Flat[], id: string): Flat[] {
   const excluded = new Set([id]);
   return items.filter((item) => {
     if (item.parentId && excluded.has(item.parentId)) {
@@ -88,7 +88,7 @@ function removeDescendants(items: Flat[], id: string): Flat[] {
 
 /** Hide the descendants of any collapsed group (relies on tree order: a parent
  *  always precedes its children in the flattened list). */
-function hideCollapsed(items: Flat[], collapsed: Set<string>): Flat[] {
+export function hideCollapsed(items: Flat[], collapsed: Set<string>): Flat[] {
   if (collapsed.size === 0) {
     return items;
   }
@@ -120,12 +120,12 @@ function readCollapsed(treeKey?: string): Set<string> {
   }
 }
 
-interface Projection {
+export interface Projection {
   depth: number;
   parentId: string | null;
 }
 
-function getProjection(
+export function getProjection(
   items: Flat[],
   activeId: string,
   overId: string,
@@ -134,6 +134,10 @@ function getProjection(
 ): Projection {
   const overIndex = items.findIndex((i) => i.id === overId);
   const activeIndex = items.findIndex((i) => i.id === activeId);
+  if (overIndex < 0 || activeIndex < 0) {
+    const activeItem = items.find((i) => i.id === activeId);
+    return { depth: activeItem?.depth ?? 0, parentId: activeItem?.parentId ?? null };
+  }
   const activeItem = items[activeIndex];
   const newItems = arrayMove(items, activeIndex, overIndex);
   const previousItem = newItems[overIndex - 1];
@@ -168,6 +172,124 @@ function getProjection(
   })();
 
   return { depth, parentId };
+}
+
+export interface ReorderItem {
+  id: string;
+  parentId: string | null;
+  position: number;
+}
+
+/**
+ * Reorders a hierarchical page tree while moving an entire subtree as a unit.
+ * Preserves hidden/collapsed descendants and re-indexes 0-based positions per parent.
+ */
+export function reorderTree({
+  flatFull,
+  flat,
+  activeId,
+  overId,
+  projection,
+}: {
+  flatFull: Flat[];
+  flat: Flat[];
+  activeId: string;
+  overId: string;
+  projection: Projection;
+}): ReorderItem[] {
+  const activeIndex = flat.findIndex((f) => f.id === activeId);
+  const overIndex = flat.findIndex((f) => f.id === overId);
+  if (activeIndex < 0 || overIndex < 0) {
+    return [];
+  }
+
+  // 1. Move active item in the visible flat list
+  const movedFlat = arrayMove(flat, activeIndex, overIndex);
+
+  // 2. Build parent lookup for ancestry checks in flatFull
+  const parentMap = new Map<string, string | null>();
+  for (const item of flatFull) {
+    parentMap.set(item.id, item.parentId);
+  }
+
+  const isDescendantOf = (id: string, rootId: string): boolean => {
+    let curr = parentMap.get(id);
+    while (curr) {
+      if (curr === rootId) return true;
+      curr = parentMap.get(curr);
+    }
+    return false;
+  };
+
+  // Subtree descendants of activeId (these must stay attached right after activeId)
+  const activeDescendants = flatFull.filter((item) =>
+    isDescendantOf(item.id, activeId),
+  );
+
+  // Other hidden descendants (e.g. collapsed groups) that were not in visible flat
+  const flatIdSet = new Set(flat.map((f) => f.id));
+  const otherHiddenItems = flatFull.filter(
+    (item) => !flatIdSet.has(item.id) && !isDescendantOf(item.id, activeId),
+  );
+
+  // Build the complete ordered list
+  const fullOrdered: Array<{ id: string; parentId: string | null }> = [];
+  const inserted = new Set<string>();
+
+  for (const item of movedFlat) {
+    if (item.id === activeId) {
+      fullOrdered.push({
+        id: item.id,
+        parentId: projection.parentId,
+      });
+      inserted.add(item.id);
+      for (const desc of activeDescendants) {
+        fullOrdered.push({
+          id: desc.id,
+          parentId: desc.parentId,
+        });
+        inserted.add(desc.id);
+      }
+    } else {
+      fullOrdered.push({
+        id: item.id,
+        parentId: item.parentId,
+      });
+      inserted.add(item.id);
+    }
+
+    // Attach any collapsed/hidden descendants for this item
+    const hiddenDescendants = otherHiddenItems.filter(
+      (h) => !inserted.has(h.id) && isDescendantOf(h.id, item.id),
+    );
+    for (const h of hiddenDescendants) {
+      fullOrdered.push({
+        id: h.id,
+        parentId: h.parentId,
+      });
+      inserted.add(h.id);
+    }
+  }
+
+  // Safety fallback for any unvisited items
+  for (const item of flatFull) {
+    if (!inserted.has(item.id)) {
+      fullOrdered.push({
+        id: item.id,
+        parentId: item.parentId,
+      });
+      inserted.add(item.id);
+    }
+  }
+
+  // Assign 0-based positions per parent
+  const posByParent = new Map<string, number>();
+  return fullOrdered.map((it) => {
+    const key = it.parentId ?? "__root";
+    const position = posByParent.get(key) ?? 0;
+    posByParent.set(key, position + 1);
+    return { id: it.id, parentId: it.parentId, position };
+  });
 }
 
 export function SortablePageTree({
@@ -266,29 +388,31 @@ export function SortablePageTree({
   const onDragOver = ({ over }: DragOverEvent) =>
     setOverId(over ? String(over.id) : null);
   const onDragEnd = ({ active, over }: DragEndEvent) => {
+    const finalOverId = over ? String(over.id) : null;
+    const finalActiveId = String(active.id);
+
+    // Compute fresh projection directly using actual drop targets to avoid stale render timing
+    const currentProjection = finalOverId
+      ? getProjection(flat, finalActiveId, finalOverId, offsetLeft, INDENT)
+      : null;
+
     reset();
-    if (!projection || !over) {
+
+    if (!currentProjection || !finalOverId) {
       return;
     }
-    const clone = flatFull.map((f) => ({ id: f.id, parentId: f.parentId }));
-    const activeIndex = clone.findIndex((f) => f.id === active.id);
-    const overIndex = clone.findIndex((f) => f.id === over.id);
-    if (activeIndex < 0 || overIndex < 0) {
-      return;
-    }
-    clone[activeIndex] = {
-      id: String(active.id),
-      parentId: projection.parentId,
-    };
-    const sorted = arrayMove(clone, activeIndex, overIndex);
-    const posByParent = new Map<string, number>();
-    const items = sorted.map((it) => {
-      const key = it.parentId ?? "__root";
-      const position = posByParent.get(key) ?? 0;
-      posByParent.set(key, position + 1);
-      return { id: it.id, parentId: it.parentId, position };
+
+    const items = reorderTree({
+      flatFull,
+      flat,
+      activeId: finalActiveId,
+      overId: finalOverId,
+      projection: currentProjection,
     });
-    onMove(items);
+
+    if (items.length > 0) {
+      onMove(items);
+    }
   };
 
   const draggingNode = draggingId
@@ -433,7 +557,7 @@ function RowPresentation({
       <button
         type="button"
         aria-label={t("editor.dragToReorder")}
-        className="flex size-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground group-hover/row:opacity-100 active:cursor-grabbing"
+        className="flex size-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground group-hover/row:opacity-100 active:cursor-grabbing touch-none select-none"
         {...handleProps}
       >
         <GripVertical className="size-3.5" />

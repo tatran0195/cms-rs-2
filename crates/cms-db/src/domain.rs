@@ -155,7 +155,9 @@ impl DomainQueries {
         pool: &PgPool,
         hostname: &str,
     ) -> Result<Option<Domain>, AppError> {
-        let hostname = normalize_hostname(hostname)?;
+        let Ok(hostname) = normalize_hostname(hostname) else {
+            return Ok(None);
+        };
         let row = sqlx::query_as::<_, DomainRow>("SELECT * FROM \"Domain\" WHERE hostname = $1")
             .bind(hostname)
             .fetch_optional(pool)
@@ -170,7 +172,9 @@ impl DomainQueries {
         pool: &PgPool,
         hostname: &str,
     ) -> Result<Option<Domain>, AppError> {
-        let hostname = normalize_hostname(hostname)?;
+        let Ok(hostname) = normalize_hostname(hostname) else {
+            return Ok(None);
+        };
         let row = sqlx::query_as::<_, DomainRow>(
             "SELECT * FROM \"Domain\" WHERE hostname = $1 AND verified_at IS NOT NULL",
         )

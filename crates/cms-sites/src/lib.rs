@@ -29,7 +29,7 @@ use cms_middleware::app_state::AppState;
 use host_resolution::{HostResolutionResult, HostResolver};
 use markdown_renderer::{HighlightTheme, MarkdownRenderer, MarkdownRendererConfig};
 use security::SiteSecurityHeaders;
-use seo::{SeoGenerator, SitemapGenerator};
+use seo::{SeoGenerator, SitemapGenerator, SitemapPageMetadata};
 use static_files::StaticFileServer;
 
 /// AppState for sites - this will be provided by the binary crate
@@ -311,19 +311,16 @@ async fn load_published_site_snapshot(
     })
 }
 
-async fn load_published_site_pages(
+async fn load_published_site_page_listing(
     state: &Arc<SitesAppState>,
     site: &PublishedSiteSnapshot,
-) -> Result<Vec<cms_entity::page::Page>, AppError> {
-    Ok(DeploymentQueries::get_snapshot_pages(
+) -> Result<Vec<cms_db::deployment::DeploymentSnapshotPageListing>, AppError> {
+    DeploymentQueries::get_snapshot_page_listing(
         &state.biz_context.pool,
         &site.deployment_id,
-        Some(&site.language_id),
+        &site.language_id,
     )
-    .await?
-    .into_iter()
-    .filter(|page| page.is_published && page.kind.eq_ignore_ascii_case("PAGE"))
-    .collect())
+    .await
 }
 
 /// Get markdown renderer from app state
@@ -411,10 +408,11 @@ async fn serve_project_index(
     )
     .await?;
 
-    let pages = load_published_site_pages(state, &site).await?;
+    let pages = load_published_site_page_listing(state, &site).await?;
 
-    // Find the root page (index or home) in the selected release and language.
-    let root_page = pages
+    // Find the root page (index or home) from metadata, then fetch only that
+    // one body. Listing views never pull page-content JSON from PostgreSQL.
+    let root_page_id = pages
         .iter()
         .find(|page| page.path == "/")
         .or_else(|| {
@@ -423,11 +421,19 @@ async fn serve_project_index(
                     && (page.slug == "index" || page.slug == "home" || page.slug == "readme")
             })
         })
-        .cloned();
+        .map(|page| page.page_id.clone());
 
     let base_url = site_base_url(state, resolution, &site.project);
-    match root_page {
-        Some(page) => {
+    match root_page_id {
+        Some(page_id) => {
+            let page = DeploymentQueries::get_snapshot_page(
+                &state.biz_context.pool,
+                &site.deployment_id,
+                &page_id,
+            )
+            .await?
+            .filter(|page| page.is_published && page.kind.eq_ignore_ascii_case("PAGE"))
+            .ok_or_else(|| AppError::NotFound("Published root page not found".to_string()))?;
             let html = render_page(
                 state,
                 &page,
@@ -440,7 +446,7 @@ async fn serve_project_index(
             Ok(Html(html))
         }
         None => {
-            // No root page found, show only pages from the same immutable release.
+            // No root page found, show only metadata from the same immutable release.
             let html = render_project_listing(
                 state,
                 &site.project,
@@ -556,7 +562,7 @@ async fn render_page(
 async fn render_project_listing(
     _state: &Arc<SitesAppState>,
     project: &cms_entity::project::Project,
-    pages: &[cms_entity::page::Page],
+    pages: &[cms_db::deployment::DeploymentSnapshotPageListing],
     base_url: &str,
     language_code: &str,
     language_is_rtl: bool,
@@ -730,9 +736,16 @@ async fn sitemap_xml_handler(
                 format!("https://{}.{}", site.project.slug, site_host(&state))
             };
 
-            let pages = load_published_site_pages(&state, &site).await?;
+            let pages = load_published_site_page_listing(&state, &site).await?;
+            let sitemap_pages = pages
+                .into_iter()
+                .map(|page| SitemapPageMetadata {
+                    path: page.path,
+                    updated_at: page.updated_at,
+                })
+                .collect::<Vec<_>>();
             let sitemap_gen = SitemapGenerator::new(base_url);
-            Ok(sitemap_gen.generate_project_sitemap(&site.project, &pages))
+            Ok(sitemap_gen.generate_project_sitemap_from_metadata(&site.project, &sitemap_pages))
         }
         None => {
             // Default empty sitemap
@@ -982,23 +995,4 @@ async fn manifest_handler(
         header::HeaderValue::from_static("application/manifest+json"),
     );
     Ok(response)
-}
-
-#[cfg(test)]
-mod spa_tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_serve_spa_file_fallback() {
-        let res = serve_spa_file("");
-        assert_eq!(res.status(), StatusCode::OK);
-        let content_type = res.headers().get(header::CONTENT_TYPE).unwrap();
-        assert_eq!(content_type, "text/html; charset=utf-8");
-    }
-
-    #[tokio::test]
-    async fn test_serve_spa_file_index() {
-        let res = serve_spa_file("index.html");
-        assert_eq!(res.status(), StatusCode::OK);
-    }
 }

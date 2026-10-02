@@ -85,6 +85,17 @@ pub struct DeploymentSnapshotPageSummary {
     pub translation_key: Option<String>,
 }
 
+/// Published page metadata for listings and sitemaps, without the body JSON.
+#[derive(Debug, Clone, FromRow)]
+pub struct DeploymentSnapshotPageListing {
+    pub page_id: String,
+    pub path: String,
+    pub title: String,
+    pub slug: String,
+    pub parent_id: Option<String>,
+    pub updated_at: DateTime<Utc>,
+}
+
 impl From<DeploymentRow> for Deployment {
     fn from(row: DeploymentRow) -> Self {
         Self {
@@ -382,9 +393,14 @@ impl DeploymentQueries {
         .map_err(|error| AppError::Database(error.into()))?;
         sqlx::query(
             r#"INSERT INTO "DeploymentSnapshotPageIndex"
-               (deployment_id, project_id, branch_id, page_id, language_id, path, kind, page_content)
+               (deployment_id, project_id, branch_id, page_id, language_id, path, kind,
+                page_content, title, slug, parent_id, is_published, page_updated_at)
                SELECT $1, $2, $3, page->>'id', NULLIF(page->>'language_id', ''),
-                      page->>'path', COALESCE(page->>'kind', 'PAGE'), page
+                      page->>'path', UPPER(COALESCE(NULLIF(page->>'kind', ''), 'PAGE')),
+                      page, COALESCE(page->>'title', ''), COALESCE(page->>'slug', ''),
+                      NULLIF(page->>'parent_id', ''),
+                      COALESCE((page->>'is_published')::BOOLEAN, FALSE),
+                      COALESCE(NULLIF(page->>'updated_at', '')::TIMESTAMPTZ, NOW())
                FROM jsonb_array_elements(COALESCE($4->'pages', '[]'::JSONB)) AS page
                WHERE page ? 'id' AND page ? 'path'"#,
         )
@@ -495,6 +511,27 @@ impl DeploymentQueries {
         )
         .bind(page_id)
         .fetch_optional(pool)
+        .await?)
+    }
+
+    /// Read only published listing metadata for one release/language. The
+    /// partial covering index avoids transferring or decompressing page bodies.
+    pub async fn get_snapshot_page_listing(
+        pool: &PgPool,
+        deployment_id: &str,
+        language_id: &str,
+    ) -> Result<Vec<DeploymentSnapshotPageListing>, AppError> {
+        Ok(sqlx::query_as::<_, DeploymentSnapshotPageListing>(
+            r#"SELECT page_id, path, title, slug, parent_id,
+                      page_updated_at AS updated_at
+               FROM "DeploymentSnapshotPageIndex"
+               WHERE deployment_id = $1 AND language_id = $2
+                 AND kind = 'PAGE' AND is_published = TRUE
+               ORDER BY path"#,
+        )
+        .bind(deployment_id)
+        .bind(language_id)
+        .fetch_all(pool)
         .await?)
     }
 

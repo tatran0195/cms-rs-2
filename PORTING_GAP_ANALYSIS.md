@@ -1,7 +1,7 @@
-# cms → cms-rs Porting Gap Analysis
+# Nibleaf → cms-rs Porting Gap Analysis
 
-**Scope:** verify that every feature and endpoint of the original **cms** Node.js monorepo
-(`lord007tn/cms`) has been correctly ported to the **cms-rs** Rust + Vite-SPA stack
+**Scope:** verify that every feature and endpoint of the original **nibleaf** Node.js monorepo
+(`lord007tn/nibleaf`) has been correctly ported to the **cms-rs** Rust + Vite-SPA stack
 (`tatran0195/cms-rs`).
 
 **Date:** 2026-09-04
@@ -76,7 +76,7 @@ machine/doc endpoints, plus two extra SPA calls:
 | **Reader-access GET no longer stub** — `GET /app/projects/:id/reader-access` now returns the project's real readers via a new `ReaderQueries::get_by_project` join, instead of the hardcoded empty list. | Project reader-access (P1) | ✅ Done, compiles |
 | **Branch delete + theme-repository** — `DELETE /app/projects/:id/branches/:id` (guards the default branch) and `GET /app/projects/:id/theme-repository` (a downloadable theme bundle) are now registered, so the SPA's `branches.delete` and the legacy `theme-repository` download link resolve instead of 404. | Project features (P1/P3) | ✅ Done, compiles |
 | **Config-driven site host** — `cms-sites` now derives its base host from `site.self_host`/`site.marketing_host` (fallback `cms.app`) in `site_host()`, and the sitemap/robots/SEO generators + subdomain host-resolution use it, instead of baking `cms.app` into the binary. | Platform (P4) | ✅ Done, compiles |
-| **Locale header handling** — `cms-middleware::Locale` now reads the SPA's `x-cms-locale` header before `Accept-Language`/cookie. | Platform (P4) | ✅ Done, 4 tests pass |
+| **Locale header handling** — `cms-middleware::Locale` now reads the SPA's `x-nibleaf-locale` header before `Accept-Language`/cookie. | Platform (P4) | ✅ Done, 4 tests pass |
 
 **Endpoint status at the 2026-09-04 checkpoint:** **119 REAL / 0 STUB / 0 ROUTE MISSING** (116 SPA
 API calls from the earlier batches, plus the `branches/:id` DELETE, `theme-repository`, and `export`
@@ -144,6 +144,13 @@ this follow-up also ran the PostgreSQL-backed product flow and exercised the act
   Out-of-band database changes remain bounded by the 30-second TTL.
 - **Legacy snapshot migration was simulated transactionally:** pre-migration page bodies were
   backfilled into `DeploymentSnapshotPageIndex` and removed from snapshot metadata.
+- **Root fallback listings and sitemaps are body-free.** Snapshot creation now copies title, slug,
+  parent, published state, kind, and page update time into the page index; a new migration backfills
+  these fields and adds a partial covering index for published PAGE listings. Root serving queries
+  that compact metadata first, fetches a body only for the selected root page, and renders the
+  fallback listing without body JSON. Sitemap generation uses the same metadata-only query. The
+  PostgreSQL E2E asserts the listing metadata, the root listing's page title, and absence of the
+  document Markdown body from the fallback HTML.
 
 ### End-to-end evidence
 
@@ -151,19 +158,22 @@ PostgreSQL 17 was installed and running locally; `cms_e2e` is a disposable test 
 commands passed:
 
 ```text
+CARGO_BUILD_JOBS=1 cargo check --workspace --all-targets
 CARGO_BUILD_JOBS=1 cargo test --workspace -- --test-threads=1
 CARGO_BUILD_JOBS=1 cargo clippy --workspace --all-targets -- -D warnings
 CARGO_BUILD_JOBS=1 CMS_E2E_DATABASE_URL='postgres://postgres:postgres@localhost:5432/cms_e2e' cargo xtask e2e --test-threads=1
 ```
 
-The workspace suite passes; the DB test is intentionally ignored there and is run separately by
-`cargo xtask e2e` (1/1 passed). The E2E drives project/language/page creation, publication, language
-artifacts, public API and host SSR, an unpublished draft, live edits/renames remaining invisible
-until release 2, a feature-branch publish explicitly selectable by version but not by the default
-host, rollback to release 1 as release 3, and the missing-default-release 404 edge case. It also
-checks release-path sitemap/canonical URLs, manifest JSON, rollback immutability, custom-domain
-partial-update preservation, authenticated hostname rotation, and immediate invalidation of the old
-host mapping.
+All four commands pass. The DB test is intentionally ignored by the workspace test command and is
+run separately by `cargo xtask e2e` (1/1 passed against the disposable PostgreSQL 17 `cms_e2e`
+database); `_sqlx_migrations` confirms migration `20260112000000` completed successfully. The E2E
+drives project/language/page creation, publication,
+language artifacts, public API and host SSR, an unpublished draft, live edits/renames remaining
+invisible until release 2, a feature-branch publish explicitly selectable by version but not by the
+default host, rollback to release 1 as release 3, and the missing-default-release 404 edge case. It
+also checks release-path sitemap/canonical URLs, metadata-only root fallback and sitemap listings,
+manifest JSON, rollback immutability, custom-domain partial-update preservation, authenticated
+hostname rotation, and immediate invalidation of the old host mapping.
 
 `cargo fmt --all -- --check` remains red because of pre-existing broad workspace formatting diffs
 and stable-rustfmt warnings for nightly-only settings. No broad formatter churn has been applied.
@@ -173,20 +183,17 @@ and stable-rustfmt warnings for nightly-only settings. No broad formatter churn 
 1. **Two rendering models still coexist:** the app host can serve the frontend SPA while custom
    hosts use Rust SSR. The product must settle whether the SPA client site or Rust SSR is canonical,
    especially for parity in MDX/custom components.
-2. **Root listing and sitemap still load full page bodies** for the default language; only an
-   individual page route uses the narrow path lookup. A title/path/date-only snapshot index query
-   would keep large documentation sites bounded.
-3. **SSR only serves the release's default language and default branch on ordinary subdomains.**
+2. **SSR only serves the release's default language and default branch on ordinary subdomains.**
    The public API can select other languages/branches; host-SSR language/version negotiation remains
    unimplemented.
-4. **DNS verification has unit but not live-DNS E2E coverage.** The E2E fixture uses a reserved
+3. **DNS verification has unit but not live-DNS E2E coverage.** The E2E fixture uses a reserved
    `.invalid` hostname and manually verifies it, so resolver timeout, propagation, and authoritative
    TXT behavior still need a controlled DNS integration test. Certificate issuance/renewal is
    delegated to the configured Caddy edge and is not exercised by this E2E.
-5. **Out-of-band database mutations may leave host mappings cached for up to 30 seconds.** Supported
+4. **Out-of-band database mutations may leave host mappings cached for up to 30 seconds.** Supported
    domain API mutations invalidate immediately through the shared generation counter; operational
    scripts and any future direct-write jobs must explicitly invalidate or account for the bounded TTL.
-6. **Deployment processing is synchronous in HTTP handlers.** Large projects may exceed the
+5. **Deployment processing is synchronous in HTTP handlers.** Large projects may exceed the
    configured request timeout; cancellation after the deployment is claimed can leave it stuck in
    `BUILDING`. A durable queue/worker acknowledgment model and load/failure tests are still needed.
 
@@ -227,7 +234,7 @@ disabled** (they return empty/hardcoded responses).
 
 ## 2. How the two systems map
 
-### cms (Node, original)
+### nibleaf (Node, original)
 - `apps/server` — Hono API under `/api`. Modules: `app/*`, `public/*`, `admin`. Auth is **Better Auth**
   mounted at `/api/auth/*`. Site rendering is SSR (TanStack Start) via `apps/app`, with a separate
   Cloudflare edge worker (`apps/custom-domain-edge`) for custom hosts.
@@ -244,11 +251,11 @@ disabled** (they return empty/hardcoded responses).
   `cms-queue`, `cms-analytics`, `cms-mcp`, `cms-sites`, `cms-middleware`, `cms-worker`.
 - `src/main.rs` (composition root) mounts: `Router /api (api_router)` merged with `cms-sites`
   (`sites_router`), with config-driven CORS (fixed this batch), compression, timeout, tracing layers.
-- `frontend/` — **a near-verbatim copy of cms's `apps/app`**, but running on **TanStack Router +
+- `frontend/` — **a near-verbatim copy of nibleaf's `apps/app`**, but running on **TanStack Router +
   Vite** (no server, no proxy) and already rendered as an SPA.
 
 **Architecture intent (per user):** the SPA is served directly by the Rust server (no Node proxy);
-custom-host resolution is also done by Rust (`cms-sites::host_resolution`). This replaces cms's
+custom-host resolution is also done by Rust (`cms-sites::host_resolution`). This replaces nibleaf's
 Node SSR + Cloudflare edge.
 
 ---
@@ -279,7 +286,7 @@ These were ported as real implementations (call into `cms-biz` / SQLx). As of th
 - **Comments, OpenAPI, Analytics** project endpoints are now real DB-backed handlers.
 - **Additions to `cms-db`:** `CommentQueries::get_by_project` (site-wide comment listing).
 - **Admin (in `cms-api`):** orgs/stats/health handlers are real (but the admin API surface does NOT
-  match cms's admin API — see §4).
+  match nibleaf's admin API — see §4).
 - **Docs-site server-side renderer (`cms-sites`):** resolves host, renders markdown → HTML, serves
   `/sitemap.xml`, `/robots.txt`, security.txt, PGP key, favicons, manifest, SPA fallback. (This is new
   infra that replaces the Node SSR, and is where the "app site" conflicts arise — see §5.)
@@ -332,11 +339,11 @@ the target of any `endpoint-map.csv` route.
   `DELETE /{id}` ✅, `DELETE /invitations/{id}` ✅.
 
 ### 4.3 `admin` — **uneven port**
-- cms admin API: `overview, funnel, users, users/:id (role/suspend/unsuspend), sites, sites/:id,
+- nibleaf admin API: `overview, funnel, users, users/:id (role/suspend/unsuspend), sites, sites/:id,
   operations, organizations/invite, sites/:id/takedown, sites/:id/restore`.
 - cms-rs admin API (`crates/cms-api/src/admin/mod.rs`): `orgs, orgs/{id}/stats, stats, health`.
 - These are **completely different surfaces**. If the admin console is being ported, its API needs to
-  be rebuilt to match cms's admin contract (or the frontend mapped to these new routes).
+  be rebuilt to match nibleaf's admin contract (or the frontend mapped to these new routes).
 
 ### 4.4 Orphaned top-level modules
 `cms-api` also mounts real routers at top level (`/api/pages`, `/api/comments`, `/api/branches`,
@@ -451,7 +458,7 @@ added by the earlier porting batches. The separate `cms-sites` router serves top
 robots files for resolved hosts. Do not treat these route families as missing; the remaining parity
 question is whether all representations use the same immutable release and host/language policy.
 
-**MDX compatibility:** the cms content model is **MDX** (callouts, custom components, mermaid,
+**MDX compatibility:** the nibleaf content model is **MDX** (callouts, custom components, mermaid,
 katex, code blocks). `cms-sites::markdown_renderer` uses `pulldown-cmark` (standard Markdown) with a
 post-processing pass that now handles the editor's canonical MDX callouts. GitHub admonition
 blockquotes (`> [!NOTE]`, `> [!TIP]`, …) render as `div[data-callout][data-variant]`, and ` ```mermaid`
@@ -463,14 +470,15 @@ SSR path — these are best handled in the SPA, which already compiles MDX via `
 
 ## 7. Custom-domain / host resolution & serving concerns
 
-- `cms-sites::host_resolution::HostResolver` resolves the `Host` header against the DB. It is now
-  constructed with the config-derived base host from `site_host()` (`site.self_host` →
-  `site.marketing_host` → fallback `"cms.app"`), so self-hosted operators / branded deployments no
-  longer need `cms.app` baked in. Subdomain detection also matches the configured base host in
-  addition to the legacy `cms.app`/`cms.com`/`cms.dev` suffixes. **Caveat:** the resolver object is
-  currently recreated for each request, so its in-memory cache does not persist. Custom-domain
-  resolution now requires `verified_at` (see §0a), but the verification handler still sets that
-  timestamp without DNS proof.
+- `cms-sites::host_resolution::HostResolver` resolves the `Host` header against the DB. It is
+  constructed once per router with the config-derived base host from `site_host()` (`site.self_host`
+  → `site.marketing_host` → fallback `"cms.app"`), so self-hosted operators / branded deployments
+  no longer need `cms.app` baked in. Subdomain detection also matches the configured base host in
+  addition to the legacy `cms.app`/`cms.com`/`cms.dev` suffixes. The shared cache is bounded to 4,096
+  hosts with a 30-second TTL and a generation counter; successful domain API mutations invalidate
+  positive and negative entries immediately. Out-of-band DB writes remain bounded by the TTL. Custom
+  domains require DNS-proven `verified_at` (see §0a); live DNS and certificate lifecycle still need
+  integration coverage.
 - The SPA fallback (`serve_spa_file`) checks a few candidate dirs (`dist/frontend`, `frontend/dist`,
   `../dist/frontend`, `../frontend/dist`). Confirm the build output path matches what ships, or the
   SPA will render the "Frontend assets not found" fallback HTML.
@@ -536,12 +544,12 @@ SSR path — these are best handled in the SPA, which already compiles MDX via `
     sitemap/robots/SEO generators use it. `HostResolver` treats the configured base host (and its
     subdomains, plus the legacy `cms.app`/`cms.com`/`cms.dev`) as the app domain.
 12. ✅ Locale header handling added: `cms-middleware::Locale` now reads the SPA's
-    `x-cms-locale` header before falling back to `Accept-Language` / `locale` cookie
+    `x-nibleaf-locale` header before falling back to `Accept-Language` / `locale` cookie
     (covered by a unit test). The frontend error envelope already matches `AppError`'s
     `{ error: { code, message, details } }`.
 13. ✅ The previously-orphan `public.pages[':id']` call is now backed by a real route
     (`GET /api/public/pages/{id}`).
-14. ⏳ Port the cms **admin** API surface or remap the admin console to the new routes — **not
+14. ⏳ Port the nibleaf **admin** API surface or remap the admin console to the new routes — **not
     done**. This was the last remaining P4 item in the 2026-09-04 endpoint audit; see §0a for current
     production risks beyond endpoint coverage.
 
@@ -549,9 +557,9 @@ SSR path — these are best handled in the SPA, which already compiles MDX via `
 
 ## 9. Evidence / files inspected
 
-- cms routers: `apps/server/src/routes.ts`, `modules/index.ts`, `modules/app/index.ts`,
+- nibleaf routers: `apps/server/src/routes.ts`, `modules/index.ts`, `modules/app/index.ts`,
   `modules/public/index.ts`, `modules/public/sites/handlers.ts`, every `app/*`/`public/*` handler.
-- cms frontend API usage: `apps/app/src/hooks/api/*`, `services/api.ts`.
+- nibleaf frontend API usage: `apps/app/src/hooks/api/*`, `services/api.ts`.
 - cms-rs routers: `crates/cms-api/src/lib.rs`, `*/mod.rs` for all modules.
 - cms-rs handlers: `crates/cms-api/src/project/handlers.rs`, `auth/handlers.rs`,
   `public/handlers.rs`, `workspace/handlers.rs`, `auth/middleware.rs`.

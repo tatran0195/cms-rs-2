@@ -307,6 +307,13 @@ pub struct SitemapUrl {
     pub priority: Option<f32>,
 }
 
+/// The page metadata required for a sitemap without retaining the Markdown body.
+#[derive(Debug, Clone)]
+pub struct SitemapPageMetadata {
+    pub path: String,
+    pub updated_at: DateTime<Utc>,
+}
+
 /// Sitemap generator
 pub struct SitemapGenerator {
     base_url: String,
@@ -317,10 +324,25 @@ impl SitemapGenerator {
         Self { base_url }
     }
 
-    /// Generate sitemap XML for a project
+    /// Generate sitemap XML for a project from full pages (compatibility API).
     pub fn generate_project_sitemap(&self, project: &Project, pages: &[Page]) -> String {
-        let mut urls = Vec::new();
+        let metadata = pages
+            .iter()
+            .map(|page| SitemapPageMetadata {
+                path: page.path.clone(),
+                updated_at: page.updated_at,
+            })
+            .collect::<Vec<_>>();
+        self.generate_project_sitemap_from_metadata(project, &metadata)
+    }
 
+    /// Generate sitemap XML without loading page bodies.
+    pub fn generate_project_sitemap_from_metadata(
+        &self,
+        project: &Project,
+        pages: &[SitemapPageMetadata],
+    ) -> String {
+        let mut urls = Vec::with_capacity(pages.len() + 1);
         let base_url = self.base_url.trim_end_matches('/');
 
         // The site is hosted at its own subdomain or custom domain, so it has

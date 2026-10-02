@@ -147,6 +147,16 @@ impl HostResolver {
         &self,
         host: &str,
     ) -> Result<Option<HostResolutionResult>, AppError> {
+        // Localhost and loopback IPs always serve the SPA dashboard
+        if host == "localhost"
+            || host == "127.0.0.1"
+            || host == "[::1]"
+            || host == "::1"
+            || host == "0.0.0.0"
+        {
+            return Ok(None);
+        }
+
         // Try to find domain by hostname
         if let Some(domain) = DomainQueries::get_verified_by_hostname(&self.pool, host).await? {
             // Get deployment for this domain
