@@ -207,39 +207,82 @@ pub async fn get_public_meta_handler(
     })))
 }
 
+/// Return all pages in depth-first tree order (position-sorted per parent level),
+/// mirroring the editor sidebar's `flatten()` traversal so that `build_nav` and
+/// `page_nav` both reflect the author-specified ordering.
+fn pages_in_tree_order(pages: &[cms_entity::page::Page]) -> Vec<&cms_entity::page::Page> {
+    use std::collections::HashMap;
+
+    // Group page indices by parent_id, sorted by position within each group.
+    let mut by_parent: HashMap<Option<&str>, Vec<usize>> = HashMap::new();
+    for (i, p) in pages.iter().enumerate() {
+        by_parent
+            .entry(p.parent_id.as_deref())
+            .or_default()
+            .push(i);
+    }
+    for indices in by_parent.values_mut() {
+        indices.sort_by_key(|&i| pages[i].position);
+    }
+
+    let mut out = Vec::with_capacity(pages.len());
+    fn walk<'a>(
+        pages: &'a [cms_entity::page::Page],
+        by_parent: &HashMap<Option<&str>, Vec<usize>>,
+        parent: Option<&str>,
+        depth: usize,
+        out: &mut Vec<&'a cms_entity::page::Page>,
+    ) {
+        if depth >= 128 {
+            return;
+        }
+        if let Some(indices) = by_parent.get(&parent) {
+            for &i in indices {
+                out.push(&pages[i]);
+                walk(pages, by_parent, Some(pages[i].id.as_str()), depth + 1, out);
+            }
+        }
+    }
+    walk(pages, &by_parent, None, 0, &mut out);
+    out
+}
+
 /// Build a hierarchical nav tree from a flat list of pages.
 ///
 /// Pages whose `parent_id` points at another page become children; pages with no
 /// parent (or a parent not present in the set) become top-level nodes. Nodes that
 /// have children are marked as `GROUP`, leaves as `PAGE`, and ordering follows the
-/// page `position` within each level.
+/// page `position` within each level (DFS, matching the editor sidebar order).
 fn build_nav(pages: &[cms_entity::page::Page]) -> Vec<serde_json::Value> {
     use std::collections::HashMap;
 
-    // Sort by position for stable ordering.
-    let mut ordered: Vec<_> = pages.to_vec();
-    ordered.sort_by_key(|p| (p.parent_id.clone().unwrap_or_default(), p.position));
-
-    let mut children: HashMap<Option<String>, Vec<usize>> = HashMap::new();
-    for (i, p) in ordered.iter().enumerate() {
-        children.entry(p.parent_id.clone()).or_default().push(i);
+    // Group page indices by parent_id, sorted by position within each group.
+    let mut by_parent: HashMap<Option<&str>, Vec<usize>> = HashMap::new();
+    for (i, p) in pages.iter().enumerate() {
+        by_parent
+            .entry(p.parent_id.as_deref())
+            .or_default()
+            .push(i);
+    }
+    for indices in by_parent.values_mut() {
+        indices.sort_by_key(|&i| pages[i].position);
     }
 
     // Recursively materialize nodes.
     fn build(
-        ordered: &[cms_entity::page::Page],
-        children: &HashMap<Option<String>, Vec<usize>>,
-        parent: Option<String>,
+        pages: &[cms_entity::page::Page],
+        by_parent: &HashMap<Option<&str>, Vec<usize>>,
+        parent: Option<&str>,
         depth: usize,
     ) -> Vec<serde_json::Value> {
         let mut out = Vec::new();
         if depth >= 128 {
             return out;
         }
-        if let Some(idx) = children.get(&parent) {
-            for &i in idx {
-                let p = &ordered[i];
-                let kid = build(ordered, children, Some(p.id.clone()), depth + 1);
+        if let Some(indices) = by_parent.get(&parent) {
+            for &i in indices {
+                let p = &pages[i];
+                let kid = build(pages, by_parent, Some(p.id.as_str()), depth + 1);
                 let kind = if p.kind == "GROUP" || !kid.is_empty() {
                     "GROUP"
                 } else {
@@ -259,7 +302,7 @@ fn build_nav(pages: &[cms_entity::page::Page]) -> Vec<serde_json::Value> {
         out
     }
 
-    build(&ordered, &children, None, 0)
+    build(pages, &by_parent, None, 0)
 }
 
 /// Extract a table-of-contents from a Markdown page: heading text + an anchor id.
@@ -289,23 +332,26 @@ fn headings_from_markdown(content: &str) -> Vec<serde_json::Value> {
 }
 
 /// Build `prev`/`next` navigation for a page given the project's ordered page list.
+///
+/// Pages are traversed in depth-first tree order (position-sorted per parent level),
+/// matching the editor sidebar and the published `build_nav` ordering so that
+/// prev/next arrows follow the same sequence the reader sees in the sidebar.
 fn page_nav(
     pages: &[cms_entity::page::Page],
     current_path: &str,
 ) -> (Option<serde_json::Value>, Option<serde_json::Value>) {
-    let mut ordered: Vec<_> = pages
-        .iter()
-        .filter(|page| page.kind.eq_ignore_ascii_case("PAGE"))
-        .cloned()
+    // Walk the full tree (including GROUPs) in DFS order, then keep only PAGEs.
+    let ordered: Vec<_> = pages_in_tree_order(pages)
+        .into_iter()
+        .filter(|p| p.kind.eq_ignore_ascii_case("PAGE"))
         .collect();
-    ordered.sort_by(|a, b| a.path.cmp(&b.path).then(a.position.cmp(&b.position)));
     let cur = ordered
         .iter()
         .position(|p| p.path.trim_matches('/') == current_path);
     let entry = |p: &cms_entity::page::Page| serde_json::json!({ "title": p.title, "path": p.path.trim_matches('/') });
     if let Some(i) = cur {
-        let prev = i.checked_sub(1).map(|j| entry(&ordered[j]));
-        let next = (i + 1 < ordered.len()).then(|| entry(&ordered[i + 1]));
+        let prev = i.checked_sub(1).map(|j| entry(ordered[j]));
+        let next = (i + 1 < ordered.len()).then(|| entry(ordered[i + 1]));
         (prev, next)
     } else {
         (None, None)
@@ -1534,4 +1580,111 @@ pub async fn get_public_site_llms_full_handler(
         out.push_str(&format!("# {}\n\n{}\n\n", p.title, p.content));
     }
     Ok(([(axum::http::header::CONTENT_TYPE, "text/plain")], out))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    fn make_page(
+        id: &str,
+        parent_id: Option<&str>,
+        path: &str,
+        title: &str,
+        kind: &str,
+        position: i32,
+    ) -> cms_entity::page::Page {
+        cms_entity::page::Page {
+            id: id.to_string(),
+            project_id: "test-proj".to_string(),
+            branch_id: "test-branch".to_string(),
+            language_id: None,
+            parent_id: parent_id.map(str::to_string),
+            kind: kind.to_string(),
+            path: path.to_string(),
+            slug: path.trim_start_matches('/').to_string(),
+            title: title.to_string(),
+            description: None,
+            content: "content".to_string(),
+            icon: None,
+            config: None,
+            translation_key: None,
+            position,
+            is_published: true,
+            is_indexed: true,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_pages_in_tree_order_respects_position_over_alphabetical_path() {
+        let pages = vec![
+            make_page("c-advanced", None, "/c-advanced", "Advanced", "GROUP", 2),
+            make_page("c-setup", Some("c-advanced"), "/c-advanced/setup", "Setup", "PAGE", 0),
+            make_page("z-intro", None, "/z-intro", "Introduction", "PAGE", 0),
+            make_page("a-guide", None, "/a-guide", "Guide", "PAGE", 1),
+            make_page("a-sub2", Some("a-guide"), "/a-guide/sub-2", "Sub 2", "PAGE", 1),
+            make_page("a-sub1", Some("a-guide"), "/a-guide/sub-1", "Sub 1", "PAGE", 0),
+        ];
+
+        let ordered = pages_in_tree_order(&pages);
+        let ids: Vec<&str> = ordered.iter().map(|p| p.id.as_str()).collect();
+
+        assert_eq!(
+            ids,
+            vec!["z-intro", "a-guide", "a-sub1", "a-sub2", "c-advanced", "c-setup"]
+        );
+    }
+
+    #[test]
+    fn test_build_nav_reflects_tree_position_order() {
+        let pages = vec![
+            make_page("p2", None, "/b-page", "B Page", "PAGE", 1),
+            make_page("p1", None, "/a-page", "A Page", "PAGE", 0),
+        ];
+
+        let nav = build_nav(&pages);
+        assert_eq!(nav.len(), 2);
+        assert_eq!(nav[0]["id"], "p1");
+        assert_eq!(nav[1]["id"], "p2");
+    }
+
+    #[test]
+    fn test_page_nav_prev_next_matches_sidebar_order() {
+        let pages = vec![
+            make_page("c-advanced", None, "/c-advanced", "Advanced", "GROUP", 2),
+            make_page("c-setup", Some("c-advanced"), "/c-advanced/setup", "Setup", "PAGE", 0),
+            make_page("z-intro", None, "/z-intro", "Introduction", "PAGE", 0),
+            make_page("a-guide", None, "/a-guide", "Guide", "PAGE", 1),
+            make_page("a-sub2", Some("a-guide"), "/a-guide/sub-2", "Sub 2", "PAGE", 1),
+            make_page("a-sub1", Some("a-guide"), "/a-guide/sub-1", "Sub 1", "PAGE", 0),
+        ];
+
+        // First page: /z-intro
+        let (prev, next) = page_nav(&pages, "z-intro");
+        assert_eq!(prev, None);
+        assert_eq!(next.unwrap()["path"], "a-guide");
+
+        // Middle page: /a-guide
+        let (prev, next) = page_nav(&pages, "a-guide");
+        assert_eq!(prev.unwrap()["path"], "z-intro");
+        assert_eq!(next.unwrap()["path"], "a-guide/sub-1");
+
+        // Next page: /a-guide/sub-1
+        let (prev, next) = page_nav(&pages, "a-guide/sub-1");
+        assert_eq!(prev.unwrap()["path"], "a-guide");
+        assert_eq!(next.unwrap()["path"], "a-guide/sub-2");
+
+        // Next page: /a-guide/sub-2 -> skips GROUP /c-advanced -> goes to /c-advanced/setup
+        let (prev, next) = page_nav(&pages, "a-guide/sub-2");
+        assert_eq!(prev.unwrap()["path"], "a-guide/sub-1");
+        assert_eq!(next.unwrap()["path"], "c-advanced/setup");
+
+        // Last page: /c-advanced/setup
+        let (prev, next) = page_nav(&pages, "c-advanced/setup");
+        assert_eq!(prev.unwrap()["path"], "a-guide/sub-2");
+        assert_eq!(next, None);
+    }
 }
