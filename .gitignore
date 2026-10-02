@@ -4,6 +4,7 @@
 .nx
 dist
 build
+upload
 tmp
 /out-tsc
 .pnpm-store
