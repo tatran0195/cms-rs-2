@@ -1,0 +1,12 @@
+{
+  "name": "cms-rs",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "frontend"
+  ],
+  "dependencies": {
+    "caniuse-lite": "^1.0.30001810",
+    "kysely": "^0.29.5"
+  }
+}

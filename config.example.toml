@@ -1,0 +1,134 @@
+# CMS Configuration Template (Example)
+#
+# Copy this file to `config.toml` (or `config/deploy.toml` for production) and adjust the values.
+# All settings can also be set via environment variables with the `CMS_` prefix
+# (e.g. `CMS_SERVER__PORT=3000`, `CMS_DATABASE__URL=postgres://...`).
+
+[server]
+host = "0.0.0.0"
+port = 3000
+https = false
+# tls_cert_path = "/path/to/cert.pem"
+# tls_key_path = "/path/to/key.pem"
+trusted_proxy_hops = 1
+
+[database]
+url = "postgres://postgres:postgres@localhost:5432/cms"
+max_pool_size = 20
+connection_timeout = 30
+ssl = false
+
+[storage]
+backend = "local"
+local_root = "./uploads"
+# s3_endpoint = "https://s3.amazonaws.com"
+# s3_region = "us-east-1"
+# s3_bucket = "your-bucket-name"
+# s3_access_key = "YOUR_ACCESS_KEY"
+# s3_secret_key = "YOUR_SECRET_KEY"
+# s3_path_style = false
+
+[search]
+backend = "pgvector"
+# pgvector_url = "postgres://postgres:postgres@localhost:5432/cms"
+# qdrant_host = "localhost"
+qdrant_port = 6333
+# qdrant_api_key = ""
+# lindera_dict_path = ""
+max_results = 50
+
+[queue]
+# Use memory only for tests/development; Postgres jobs survive process restart.
+backend = "postgres"
+# redis_url = "redis://127.0.0.1:6379"
+workers = 4
+max_retries = 3
+
+[analytics]
+backend = "postgres"
+# clickhouse_host = "localhost"
+clickhouse_port = 8123
+# clickhouse_database = "cms_analytics"
+# clickhouse_username = "default"
+# clickhouse_password = ""
+
+[auth]
+session_secret = "dev_session_secret_change_in_production"
+session_expiration_hours = 168
+jwt_secret = "dev_jwt_secret_change_in_production"
+jwt_expiration_hours = 720
+api_key_prefix = "cms_api_key"
+# Platform admin allow-list; never grant this to ordinary workspace owners.
+system_admin_emails = []
+
+# [auth.oauth.github]
+# client_id = ""
+# client_secret = ""
+# redirect_uri = "http://localhost:3000/api/v1/auth/oauth/github/callback"
+
+# [auth.oauth.google]
+# client_id = ""
+# client_secret = ""
+# redirect_uri = "http://localhost:3000/api/v1/auth/oauth/google/callback"
+
+[site]
+# marketing_host = "cms.com"
+# self_host = ""
+# edge_secret = ""
+seo_cache_max_age = 300
+
+[domain_verification]
+resolver_url = "https://cloudflare-dns.com/dns-query"
+timeout_seconds = 5
+
+[domain_tls]
+# Optional shared secret with the trusted TLS proxy; set the same value in Caddy.
+# proxy_secret = ""
+
+[mcp]
+enabled = false
+max_connections = 100
+rate_limit = 60
+
+# [mailer]
+# smtp_host = "smtp.example.com"
+# smtp_port = 587
+# smtp_username = ""
+# smtp_password = ""
+# smtp_use_tls = true
+# from_email = "no-reply@example.com"
+# from_name = "CMS"
+
+[rate_limit]
+enabled = true
+requests_per_second = 100
+burst_size = 200
+max_tracked_clients = 10000
+client_ttl_secs = 300
+
+[security_headers]
+enable_hsts = true
+hsts_max_age = 31536000
+hsts_include_subdomains = true
+enable_x_content_type_options = true
+enable_x_frame_options = true
+x_frame_options = "DENY"
+enable_x_xss_protection = true
+enable_csp = true
+csp = "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+enable_referrer_policy = true
+referrer_policy = "strict-origin-when-cross-origin"
+enable_permissions_policy = true
+permissions_policy = "geolocation=(), microphone=(), camera=(), payment=()"
+
+[admin_origin]
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+    "https://admin.cms.com",
+    "https://app.cms.com",
+    "https://cms.com"
+]
+enforce = true
+allow_localhost = true

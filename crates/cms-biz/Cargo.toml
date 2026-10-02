@@ -1,0 +1,52 @@
+[package]
+name = "cms-biz"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = { workspace = true }
+cms-db = { path = "../cms-db" }
+cms-entity = { path = "../cms-entity" }
+cms-error = { path = "../cms-error" }
+cms-config = { path = "../cms-config" }
+cms-auth = { path = "../cms-auth" }
+cms-storage = { path = "../cms-storage" }
+cms-search = { path = "../cms-search" }
+cms-queue = { path = "../cms-queue" }
+cms-authz = { path = "../cms-authz" }
+bytes = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+
+# Markdown rendering (for deployment HTML generation)
+pulldown-cmark = { workspace = true }
+ammonia = { workspace = true }
+
+# HTTP client for Git provider API calls (GitHub/GitLab REST)
+reqwest = { workspace = true }
+urlencoding = { workspace = true }
+
+# Transactional email delivery for authentication and invitations
+lettre = { workspace = true }
+
+# Export generation
+printpdf = { workspace = true }
+epub-builder = { workspace = true }
+
+# Logging & error handling
+tracing = { workspace = true }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }
+mockall = { workspace = true }
+
+[lints]
+workspace = true

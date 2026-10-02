@@ -1,0 +1,32 @@
+[package]
+name = "cms-auth"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { workspace = true }
+async-trait = { workspace = true }
+jsonwebtoken = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+cms-config = { path = "../cms-config" }
+cms-db = { path = "../cms-db" }
+cms-entity = { path = "../cms-entity" }
+cms-error = { path = "../cms-error" }
+
+# Password hashing & cryptography
+argon2 = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+axum-extra = { workspace = true, features = ["cookie"] }
+tower = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true

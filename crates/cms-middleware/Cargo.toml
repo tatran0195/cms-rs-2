@@ -1,0 +1,43 @@
+[package]
+name = "cms-middleware"
+version = "0.1.0"
+edition = "2021"
+description = "Cross-cutting Tower layers for CMS"
+
+[dependencies]
+# Internal crates
+cms-error = { path = "../cms-error" }
+cms-config = { path = "../cms-config" }
+cms-entity = { path = "../cms-entity" }
+cms-biz = { path = "../cms-biz" }
+cms-db = { path = "../cms-db" }
+cms-storage = { path = "../cms-storage" }
+cms-queue = { path = "../cms-queue" }
+cms-search = { path = "../cms-search" }
+cms-authz = { path = "../cms-authz" }
+
+# External dependencies
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true, features = ["cors", "limit", "trace", "compression-full", "fs", "sensitive-headers", "set-header"] }
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+lazy_static = { workspace = true }
+parking_lot = { workspace = true }
+async-trait = { workspace = true }
+
+# Production-ready infrastructure crates
+governor = { workspace = true }  # Rate limiting with per-key support
+metrics = { workspace = true }  # Lightweight metrics collection
+metrics-exporter-prometheus = { workspace = true, optional = true }  # Optional Prometheus exporter
+hyper = { workspace = true, optional = true }  # For Prometheus exporter
+
+[features]
+default = []
+prometheus = ["metrics-exporter-prometheus", "hyper"]
+
+[lints]
+workspace = true

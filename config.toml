@@ -1,0 +1,202 @@
+# CMS Configuration (Local Development)
+#
+# This file provides the default local development configuration for the CMS application.
+# Values in this file are used automatically when running locally.
+# Environment variables prefixed with `CMS_` (e.g. `CMS_SERVER__PORT=8080`) take precedence.
+
+[server]
+# IP/host address to bind the HTTP server to (use "0.0.0.0" for all interfaces or "127.0.0.1" for local-only)
+host = "0.0.0.0"
+# Port number to listen on
+port = 3000
+# Whether to enable direct TLS/HTTPS termination in the application
+https = false
+# Path to TLS certificate (required if https is true)
+# tls_cert_path = "./certs/server.crt"
+# Path to TLS private key (required if https is true)
+# tls_key_path = "./certs/server.key"
+# Number of trusted upstream proxy hops for X-Forwarded-For parsing
+trusted_proxy_hops = 1
+
+[database]
+# PostgreSQL connection URL
+url = "postgres://postgres:postgres@localhost:5432/cms"
+# Maximum connection pool size
+max_pool_size = 20
+# Connection acquisition timeout in seconds
+connection_timeout = 30
+# Whether to enforce SSL connection to the database
+ssl = false
+
+[storage]
+# Storage backend: "local" (filesystem) or "s3" (AWS S3 / MinIO)
+backend = "local"
+# Local filesystem root directory for uploaded files (used when backend = "local")
+local_root = "./uploads"
+# S3 / MinIO endpoint URL (optional, used when backend = "s3")
+# s3_endpoint = "http://localhost:9000"
+# S3 region (e.g., "ap-northeast-1", "us-east-1")
+# s3_region = "us-east-1"
+# S3 bucket name
+# s3_bucket = "cms-media"
+# S3 access key ID
+# s3_access_key = "minioadmin"
+# S3 secret access key
+# s3_secret_key = "minioadmin"
+# Whether to use path-style S3 URLs (true for MinIO/LocalStack)
+s3_path_style = false
+
+[search]
+# Vector & full-text search backend: "pgvector" (PostgreSQL) or "qdrant" (Vector DB)
+backend = "pgvector"
+# Dedicated pgvector connection URL (defaults to database.url if omitted)
+# pgvector_url = "postgres://postgres:postgres@localhost:5432/cms"
+# Qdrant host (used when backend = "qdrant")
+# qdrant_host = "localhost"
+# Qdrant port (used when backend = "qdrant")
+qdrant_port = 6333
+# Qdrant API key (optional)
+# qdrant_api_key = "secret_qdrant_key"
+# Lindera dictionary path for Japanese morphological tokenization
+# lindera_dict_path = "./dicts/ipadic"
+# Default maximum search result limit
+max_results = 50
+
+[queue]
+# Background job queue backend: "postgres" (durable), "memory" (dev only), or "redis"
+backend = "postgres"
+# Redis connection URL (used when backend = "redis")
+# redis_url = "redis://127.0.0.1:6379"
+# Number of background worker tasks
+workers = 4
+# Maximum retry attempts for failed jobs
+max_retries = 3
+
+[analytics]
+# Analytics storage backend: "postgres" or "clickhouse"
+backend = "postgres"
+# ClickHouse host (used when backend = "clickhouse")
+# clickhouse_host = "localhost"
+# ClickHouse HTTP port (used when backend = "clickhouse")
+clickhouse_port = 8123
+# ClickHouse database name
+# clickhouse_database = "cms_analytics"
+# ClickHouse username
+# clickhouse_username = "default"
+# ClickHouse password
+# clickhouse_password = ""
+
+[auth]
+# Secret key used for signing session cookies
+session_secret = "dev_session_secret_change_in_production"
+# Session lifetime in hours (168 = 7 days)
+session_expiration_hours = 168
+# Secret key used for signing JWT reader tokens
+jwt_secret = "dev_jwt_secret_change_in_production"
+# JWT token validity in hours (720 = 30 days)
+jwt_expiration_hours = 720
+# Prefix used for API key generation and hashing
+api_key_prefix = "cms_api_key"
+
+# [auth.oauth.github]
+# client_id = "your_github_client_id"
+# client_secret = "your_github_client_secret"
+# redirect_uri = "http://localhost:3000/api/v1/auth/oauth/github/callback"
+
+# [auth.oauth.google]
+# client_id = "your_google_client_id"
+# client_secret = "your_google_client_secret"
+# redirect_uri = "http://localhost:3000/api/v1/auth/oauth/google/callback"
+
+[site]
+# Marketing brand host (e.g. "cms.com")
+# marketing_host = "cms.com"
+# Self-hosted operator domain
+# self_host = "localhost:3000"
+# Shared secret for verifying Cloudflare edge worker requests
+# edge_secret = "edge_secret_token"
+# SEO cache time-to-live in seconds (300 = 5 minutes)
+seo_cache_max_age = 300
+
+[domain_verification]
+# DNS-over-HTTPS resolver for ownership TXT lookups; use a trusted HTTPS resolver.
+resolver_url = "https://cloudflare-dns.com/dns-query"
+timeout_seconds = 5
+
+[mcp]
+# Whether to enable Model Context Protocol (MCP) server endpoints
+enabled = false
+# Maximum concurrent MCP connections
+max_connections = 100
+# MCP request rate limit per minute
+rate_limit = 60
+
+[mailer]
+# Mailpit SMTP relay for local development (http://localhost:8025 for web UI)
+smtp_host = "localhost"
+smtp_port = 1025
+# No credentials required for Mailpit
+# smtp_username = ""
+# smtp_password = ""
+# Mailpit does not require TLS — use plain unencrypted SMTP
+smtp_use_tls = false
+smtp_plain_no_tls = true
+# Default from email address
+from_email = "no-reply@cms.local"
+# Default from display name
+from_name = "CMS"
+
+[rate_limit]
+# Enable global rate limiting
+enabled = true
+# Allowed requests per second per client
+requests_per_second = 100
+# Maximum burst capacity
+burst_size = 200
+# Maximum tracked client IPs kept in memory
+max_tracked_clients = 10000
+# Idle client state TTL in seconds (300 = 5 minutes)
+client_ttl_secs = 300
+
+[security_headers]
+# Enable HTTP Strict Transport Security (HSTS)
+enable_hsts = true
+# HSTS max age in seconds (31536000 = 1 year)
+hsts_max_age = 31536000
+# Include subdomains in HSTS
+hsts_include_subdomains = true
+# Enable X-Content-Type-Options: nosniff
+enable_x_content_type_options = true
+# Enable X-Frame-Options
+enable_x_frame_options = true
+# X-Frame-Options value ("DENY" or "SAMEORIGIN")
+x_frame_options = "DENY"
+# Enable X-XSS-Protection
+enable_x_xss_protection = true
+# Enable Content-Security-Policy (CSP)
+enable_csp = true
+# CSP directive value
+csp = "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+# Enable Referrer-Policy
+enable_referrer_policy = true
+# Referrer-Policy value
+referrer_policy = "strict-origin-when-cross-origin"
+# Enable Permissions-Policy
+enable_permissions_policy = true
+# Permissions-Policy directives
+permissions_policy = "geolocation=(), microphone=(), camera=(), payment=()"
+
+[admin_origin]
+# Allowed admin dashboard origin URLs
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+    "https://admin.cms.com",
+    "https://app.cms.com",
+    "https://cms.com"
+]
+# Enforce admin origin verification
+enforce = true
+# Allow localhost origins during development
+allow_localhost = true

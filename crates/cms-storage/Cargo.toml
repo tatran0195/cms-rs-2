@@ -1,0 +1,27 @@
+[package]
+name = "cms-storage"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = { workspace = true }
+bytes = { workspace = true }
+tokio = { workspace = true, features = ["fs"] }
+cms-config = { path = "../cms-config" }
+cms-error = { path = "../cms-error" }
+
+# S3 support (optional)
+aws-sdk-s3 = { workspace = true, optional = true }
+aws-config = { workspace = true, optional = true }
+aws-credential-types = { workspace = true, optional = true }
+
+[features]
+default = []
+s3 = ["aws-sdk-s3", "aws-config", "aws-credential-types"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

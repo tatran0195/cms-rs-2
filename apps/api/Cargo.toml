@@ -1,0 +1,39 @@
+[package]
+name = "cms-server"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cms-server"
+path = "main.rs"
+
+[dependencies]
+cms-api = { workspace = true }
+cms-sites = { workspace = true }
+cms-middleware = { workspace = true }
+cms-config = { workspace = true }
+cms-error = { workspace = true }
+cms-queue = { workspace = true }
+cms-worker = { workspace = true }
+
+# HTTP
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+hyper = { workspace = true }
+
+# Async
+tokio = { workspace = true, features = ["full"] }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Configuration
+config = { workspace = true }
+
+[features]
+default = []
+
+[lints]
+workspace = true

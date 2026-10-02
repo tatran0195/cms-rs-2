@@ -1,0 +1,26 @@
+[package]
+name = "cms-analytics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = { workspace = true }
+cms-config = { path = "../cms-config" }
+cms-entity = { path = "../cms-entity" }
+cms-error = { path = "../cms-error" }
+cms-db = { path = "../cms-db" }
+
+# Async
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+[features]
+default = []
+clickhouse = []
+
+[lints]
+workspace = true

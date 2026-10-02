@@ -1,0 +1,16 @@
+[package]
+name = "cms-authz"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = { workspace = true }
+cms-entity = { path = "../cms-entity" }
+cms-error = { path = "../cms-error" }
+cms-db = { path = "../cms-db" }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true

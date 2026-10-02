@@ -1,0 +1,294 @@
+[
+  {
+    "file": "apps/app/public/brand/raster/favicon/favicon-16.png",
+    "width": 16,
+    "height": 16,
+    "group": "favicon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/favicon/favicon-32.png",
+    "width": 32,
+    "height": 32,
+    "group": "favicon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/favicon/favicon-48.png",
+    "width": 48,
+    "height": 48,
+    "group": "favicon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/favicon/favicon-64.png",
+    "width": 64,
+    "height": 64,
+    "group": "favicon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/app-icon/apple-touch-icon-180.png",
+    "width": 180,
+    "height": 180,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/app-icon/mstile-150.png",
+    "width": 150,
+    "height": 150,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/app-icon/android-chrome-192.png",
+    "width": 192,
+    "height": 192,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/app-icon/android-chrome-512.png",
+    "width": 512,
+    "height": 512,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/app-icon/app-icon-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/cms-icon-64.png",
+    "width": 64,
+    "height": 64,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/cms-icon-128.png",
+    "width": 128,
+    "height": 128,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/cms-icon-256.png",
+    "width": 256,
+    "height": 256,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/cms-icon-512.png",
+    "width": 512,
+    "height": 512,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/cms-icon-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/cms-icon-reverse-512.png",
+    "source": "cms-icon-reverse.svg",
+    "width": 512,
+    "height": 512,
+    "format": "png",
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/cms-icon-monochrome-512.png",
+    "source": "cms-icon-monochrome.svg",
+    "width": 512,
+    "height": 512,
+    "format": "png",
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-wordmark.png",
+    "source": "cms-wordmark.svg",
+    "width": 840,
+    "height": 300,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-wordmark-reverse.png",
+    "source": "cms-wordmark-reverse.svg",
+    "width": 840,
+    "height": 300,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-wordmark-ar.png",
+    "source": "cms-wordmark-ar.svg",
+    "width": 840,
+    "height": 300,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-wordmark-ar-reverse.png",
+    "source": "cms-wordmark-ar-reverse.svg",
+    "width": 840,
+    "height": 300,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-stacked.png",
+    "source": "cms-logo-stacked.svg",
+    "width": 1024,
+    "height": 1180,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-stacked-transparent.png",
+    "source": "cms-logo-stacked-transparent.svg",
+    "width": 1024,
+    "height": 1180,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-dark.png",
+    "source": "cms-logo-dark.svg",
+    "width": 1024,
+    "height": 1180,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-monochrome.png",
+    "source": "cms-logo-monochrome.svg",
+    "width": 1024,
+    "height": 1180,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-stacked-ar.png",
+    "source": "cms-logo-stacked-ar.svg",
+    "width": 1024,
+    "height": 1180,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-horizontal-ltr.png",
+    "source": "cms-logo-horizontal-ltr.svg",
+    "width": 1520,
+    "height": 440,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-horizontal-ltr-reverse.png",
+    "source": "cms-logo-horizontal-ltr-reverse.svg",
+    "width": 1520,
+    "height": 440,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-horizontal-rtl.png",
+    "source": "cms-logo-horizontal-rtl.svg",
+    "width": 1520,
+    "height": 440,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-horizontal-icon-right.png",
+    "source": "cms-logo-horizontal-icon-right.svg",
+    "width": 1520,
+    "height": 440,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-horizontal-reverse.png",
+    "source": "cms-logo-horizontal-reverse.svg",
+    "width": 1520,
+    "height": 440,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-sidebar-lockup.png",
+    "source": "cms-sidebar-lockup.svg",
+    "width": 680,
+    "height": 192,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-sidebar-lockup-ar.png",
+    "source": "cms-sidebar-lockup-ar.svg",
+    "width": 680,
+    "height": 192,
+    "format": "png",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-stacked.jpg",
+    "source": "cms-logo-stacked.svg",
+    "width": 1024,
+    "height": 1180,
+    "format": "jpg",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/cms-logo-dark.jpg",
+    "source": "cms-logo-dark.svg",
+    "width": 1024,
+    "height": 1180,
+    "format": "jpg",
+    "group": "logo"
+  },
+  {
+    "file": "apps/app/public/brand/raster/social/cms-social-avatar-512.png",
+    "source": "cms-social-avatar.svg",
+    "width": 512,
+    "height": 512,
+    "format": "png",
+    "group": "social"
+  },
+  {
+    "file": "apps/app/public/brand/raster/social/cms-social-avatar-1024.png",
+    "source": "cms-social-avatar.svg",
+    "width": 1024,
+    "height": 1024,
+    "format": "png",
+    "group": "social"
+  },
+  {
+    "file": "apps/app/public/brand/raster/social/cms-og-card.png",
+    "source": "cms-og-card.svg",
+    "width": 1200,
+    "height": 630,
+    "format": "png",
+    "group": "social"
+  },
+  {
+    "file": "apps/app/public/brand/raster/social/cms-og-card.jpg",
+    "source": "cms-og-card.svg",
+    "width": 1200,
+    "height": 630,
+    "format": "jpg",
+    "group": "social"
+  },
+  {
+    "file": "apps/app/public/brand/raster/social/cms-og-card-ar.png",
+    "source": "cms-og-card-ar.svg",
+    "width": 1200,
+    "height": 630,
+    "format": "png",
+    "group": "social"
+  },
+  {
+    "file": "apps/app/public/brand/raster/social/cms-og-card-ar.jpg",
+    "source": "cms-og-card-ar.svg",
+    "width": 1200,
+    "height": 630,
+    "format": "jpg",
+    "group": "social"
+  }
+]

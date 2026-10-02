@@ -1,0 +1,54 @@
+[package]
+name = "cms-api"
+version = "0.1.0"
+edition = "2021"
+description = "CMS API layer with Axum routers and handlers"
+
+[dependencies]
+# Internal crates
+cms-biz = { path = "../cms-biz" }
+cms-db = { path = "../cms-db" }
+cms-entity = { path = "../cms-entity" }
+cms-error = { path = "../cms-error" }
+cms-auth = { path = "../cms-auth" }
+cms-authz = { path = "../cms-authz" }
+cms-middleware = { path = "../cms-middleware" }
+cms-config = { path = "../cms-config" }
+cms-storage = { path = "../cms-storage" }
+cms-search = { path = "../cms-search" }
+cms-queue = { path = "../cms-queue" }
+
+# External dependencies
+axum = { workspace = true, features = ["json", "multipart"] }
+axum-extra = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+validator = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+utoipa = { workspace = true }
+schemars = { workspace = true }
+base64 = { workspace = true }
+serde_urlencoded = { workspace = true }
+async-trait = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+reqwest = { workspace = true }
+
+[dev-dependencies]
+cms-sites = { path = "../cms-sites" }
+cms-worker = { path = "../cms-worker" }
+tower = { workspace = true, features = ["util"] }
+http = { workspace = true }
+hyper = { workspace = true }
+
+[lints]
+workspace = true

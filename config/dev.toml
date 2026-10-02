@@ -1,0 +1,35 @@
+# CMS Development Profile (config/dev.toml)
+#
+# Activated when CMS_ENV=dev (or default).
+# Overrides base config.toml settings for development environments.
+
+[server]
+host = "0.0.0.0"
+port = 6000
+
+[database]
+url = "postgres://postgres:postgres@localhost:5432/cms"
+max_pool_size = 10
+ssl = false
+
+[storage]
+backend = "local"
+local_root = "./uploads"
+
+[search]
+backend = "pgvector"
+
+[queue]
+backend = "memory"
+workers = 2
+
+[analytics]
+backend = "postgres"
+
+[rate_limit]
+enabled = true
+requests_per_second = 100
+burst_size = 200
+
+[admin_origin]
+allow_localhost = true

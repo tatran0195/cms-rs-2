@@ -1,0 +1,10 @@
+{
+  "extends": "@cms/tsconfig/react.json",
+  "compilerOptions": {
+    "paths": {
+      "@cms/design-system/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", ".cache", ".turbo"]
+}

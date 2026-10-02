@@ -1,0 +1,5 @@
+{
+  "extends": "@cms/tsconfig/hono.json",
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,53 @@
+# GitLab CI/CD Pipeline for CMS Server
+# Targeted for Windows Production (No Docker runtime for deployment)
+# Uses Windows runners for build and test
+
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR\.cargo
+  RUSTUP_HOME: $CI_PROJECT_DIR\.rustup
+  RUST_VERSION: "1.96.1"
+
+default:
+  tags:
+    - windows
+  before_script:
+    # Ensure rustup is installed and path is configured
+    - if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) { Invoke-WebRequest -Uri https://win.rustup.rs/ -OutFile rustup-init.exe; .\rustup-init.exe -y --default-toolchain $RUST_VERSION --profile minimal; Remove-Item rustup-init.exe }
+    - $env:Path += ";$env:CARGO_HOME\bin"
+    - rustup default $RUST_VERSION
+    - rustup component add clippy rustfmt
+
+lint:
+  stage: lint
+  script:
+    - cargo fmt --all -- --check
+    - cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+test:
+  stage: test
+  script:
+    - cargo test --workspace --all-features
+
+build:
+  stage: build
+  script:
+    - cargo build --release
+  artifacts:
+    paths:
+      - target/release/cms_server.exe
+    expire_in: 1 week
+    
+deploy:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  script:
+    - echo "Deploying cms_server.exe to AWS Windows machine"
+    # Placeholder for actual deployment script (e.g. Stop-Service, Copy-Item, Start-Service)
+    - .\deploy\deploy.ps1 -Environment production

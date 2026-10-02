@@ -1,0 +1,40 @@
+[package]
+name = "cms-sites"
+version = "0.1.0"
+edition = "2021"
+description = "Published site and marketing serving for CMS"
+
+[dependencies]
+# Internal crates
+cms-biz = { path = "../cms-biz" }
+cms-db = { path = "../cms-db" }
+cms-entity = { path = "../cms-entity" }
+cms-error = { path = "../cms-error" }
+cms-storage = { path = "../cms-storage" }
+cms-config = { path = "../cms-config" }
+cms-middleware = { path = "../cms-middleware" }
+
+# External dependencies
+axum = { workspace = true, features = ["json", "multipart"] }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+
+# Markdown rendering
+pulldown-cmark = { workspace = true }
+
+# HTML sanitization
+ammonia = { workspace = true }
+
+# Syntax highlighting (server-side, zero JS)
+syntect = { workspace = true }
+lazy_static = { workspace = true }
+
+[lints]
+workspace = true

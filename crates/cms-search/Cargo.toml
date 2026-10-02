@@ -1,0 +1,42 @@
+[package]
+name = "cms-search"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = { workspace = true }
+cms-config = { path = "../cms-config" }
+cms-error = { path = "../cms-error" }
+cms-entity = { path = "../cms-entity" }
+cms-db = { path = "../cms-db" }
+
+# Japanese tokenizer
+lindera = { workspace = true }
+
+# Vector search
+pgvector = { workspace = true, optional = true }
+
+# Postgres
+sqlx = { workspace = true, features = ["postgres", "runtime-tokio"] }
+
+# Qdrant
+qdrant-client = { workspace = true, optional = true }
+
+# Async
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+[features]
+default = ["pgvector"]
+pgvector = ["dep:pgvector"]
+qdrant = ["dep:qdrant-client"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,27 @@
+# Example TLS edge for arbitrary customer domains.
+# Point customer A/AAAA records to this host, persist Caddy's data directory,
+# and configure CMS_DOMAIN_TLS__PROXY_SECRET with the same random secret CMS uses.
+{
+	on_demand_tls {
+		ask http://cms-rs:3000/api/public/domains/tls-authorize
+		interval 2m
+		burst 10
+	}
+}
+
+:80 {
+	redir https://{http.request.host}{uri} 308
+}
+
+:443 {
+	tls {
+		on_demand
+	}
+
+	reverse_proxy cms-rs:3000 {
+		# Never trust a client-supplied observation token; inject the secret only
+		# on the trusted proxy-to-CMS hop.
+		header_up -X-CMS-Proxy-Token
+		header_up X-CMS-Proxy-Token {$CMS_DOMAIN_TLS__PROXY_SECRET}
+	}
+}

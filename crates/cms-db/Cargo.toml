@@ -1,0 +1,21 @@
+[package]
+name = "cms-db"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sqlx = { workspace = true, features = ["postgres", "runtime-tokio", "tls-native-tls", "uuid", "chrono", "json"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+idna = { workspace = true }
+cms-entity = { path = "../cms-entity" }
+cms-error = { path = "../cms-error" }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[lints]
+workspace = true

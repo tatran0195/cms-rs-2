@@ -1,0 +1,166 @@
+[workspace]
+# CMS Rust Workspace
+#
+# This workspace contains the Rust backend for CMS, a modern documentation platform.
+#
+# Architecture:
+# - cms-*: Library crates (entity, db, biz, api, middleware, etc.)
+# - cms-server: Binary crate (composition root)
+#
+# Layering:
+#   API Layer (cms-api) → Biz Layer (cms-biz) → DB Layer (cms-db)
+#   No circular dependencies allowed
+#
+# Deployment:
+# - Single AWS Windows machine (no Docker)
+# - In-process auth (no GoTrue)
+# - Pluggable backends: local-disk/S3, pgvector/Qdrant, memory/Redis, Postgres/ClickHouse
+
+members = [
+  "crates/cms-config",
+  "crates/cms-error",
+  "crates/cms-entity",
+  "crates/cms-db",
+  "crates/cms-auth",
+  "crates/cms-authz",
+  "crates/cms-storage",
+  "crates/cms-search",
+  "crates/cms-queue",
+  "crates/cms-analytics",
+  "crates/cms-mcp",
+  "crates/cms-biz",
+  "crates/cms-sites",
+  "crates/cms-api",
+  "crates/cms-worker",
+  "crates/cms-middleware",
+  "apps/api",
+  "xtask",
+]
+resolver = "2"
+
+[workspace.dependencies]
+# Internal dependencies (path-based)
+cms-config = { path = "crates/cms-config" }
+cms-error = { path = "crates/cms-error" }
+cms-entity = { path = "crates/cms-entity" }
+cms-db = { path = "crates/cms-db" }
+cms-auth = { path = "crates/cms-auth" }
+cms-authz = { path = "crates/cms-authz" }
+cms-storage = { path = "crates/cms-storage" }
+cms-search = { path = "crates/cms-search" }
+cms-queue = { path = "crates/cms-queue" }
+cms-analytics = { path = "crates/cms-analytics" }
+cms-mcp = { path = "crates/cms-mcp" }
+cms-biz = { path = "crates/cms-biz" }
+cms-sites = { path = "crates/cms-sites" }
+cms-api = { path = "crates/cms-api" }
+cms-worker = { path = "crates/cms-worker" }
+cms-middleware = { path = "crates/cms-middleware" }
+
+# External dependencies (versioned)
+# HTTP & Web
+axum = "0.8.9"
+tower = "0.5.3"
+tower-http = { version = "0.7.0", features = ["cors", "limit", "trace", "compression-full", "fs", "sensitive-headers", "catch-panic", "timeout", "set-header"] }
+tokio = { version = "1.53.1", features = ["full"] }
+hyper = "1.11.1"
+http = "1.5.0"
+axum-extra = { version = "0.12.6", features = ["typed-header", "cookie"] }
+
+# Serialization
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+
+# Database
+sqlx = { version = "0.9.0", features = ["postgres", "chrono", "uuid", "json", "runtime-tokio", "tls-native-tls"] }
+
+# Time & UUID
+chrono = { version = "0.4.45", features = ["serde"] }
+uuid = { version = "1.26.0", features = ["v4", "serde"] }
+
+# Logging & Tracing
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt", "json"] }
+
+# Configuration
+config = { version = "0.15.25", features = ["toml"] }
+
+# Error handling
+anyhow = "1.0.104"
+thiserror = "2.0.20"
+async-trait = "0.1.92"
+
+# Utilities
+bytes = "1.12.1"
+pulldown-cmark = "0.13.4"
+ammonia = "4.1.4"
+syntect = { version = "5.3.0", default-features = false, features = ["default-syntaxes", "default-themes", "html", "regex-onig"] }
+validator = { version = "0.21.0", features = ["derive"] }
+utoipa = { version = "5.5.0", features = ["axum_extras", "chrono", "uuid", "yaml"] }
+schemars = "1.2.2"
+parking_lot = "0.12.5"
+lazy_static = "1.5.0"
+mockall = "0.15.0"
+tempfile = "3.27.0"
+
+# Authentication
+jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }
+argon2 = "0.6.0"
+sha2 = "0.10.8"
+hex = "0.4.3"
+base64 = "0.23.1"
+serde_urlencoded = "0.7.1"
+urlencoding = "2.1.3"
+idna = "1.1.0"
+
+# Production-ready infrastructure
+governor = "0.10.4"
+metrics = "0.24.6"
+metrics-exporter-prometheus = "0.18.3"
+
+# Email
+lettre = { version = "0.11", features = ["tokio1", "tokio1-native-tls"] }
+
+# HTTP client (Git sync API calls)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Export generation
+printpdf = { version = "0.7" }
+epub-builder = { version = "0.7" }
+
+# Optional & feature dependencies
+redis = { version = "1.6.0", features = ["tokio-comp"] }
+deadpool-redis = { version = "0.23.1" }
+apalis = { version = "1.0.0-rc.9", features = ["memory", "redis"] }
+aws-sdk-s3 = { version = "1.144.0", features = ["rt-tokio"] }
+aws-config = { version = "1.11.0" }
+aws-credential-types = { version = "1.3.0" }
+pgvector = { version = "0.4.2" }
+lindera = { version = "6.0.0" }
+qdrant-client = { version = "1.19.0" }
+
+[workspace.metadata]
+# Configuration for cargo tools
+# This workspace follows layering discipline
+# All dependencies flow downward: api → biz → db
+# No circular dependencies allowed
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = false
+
+[workspace.lints.rust]
+unused = "allow"
+dead_code = "allow"
+ambiguous_glob_reexports = "allow"

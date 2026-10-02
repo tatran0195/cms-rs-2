@@ -1,0 +1,82 @@
+# CMS Production / AWS Deployment Profile (config/deploy.toml)
+#
+# Activated when CMS_ENV=deploy.
+# Configured for single AWS Windows machine deployment.
+
+[server]
+host = "0.0.0.0"
+port = 3000
+https = false
+trusted_proxy_hops = 1
+
+[database]
+url = "postgres://postgres:postgres@localhost:5432/cms"
+max_pool_size = 30
+connection_timeout = 30
+ssl = false
+
+[storage]
+# Set to "s3" in production if using AWS S3
+backend = "local"
+local_root = "C:/cms/uploads"
+# s3_region = "ap-northeast-1"
+# s3_bucket = "production-cms-bucket"
+
+[search]
+backend = "pgvector"
+max_results = 50
+
+[queue]
+# Set to "redis" if scaling across instances, or "memory" for single Windows machine
+backend = "memory"
+workers = 8
+max_retries = 5
+
+[analytics]
+backend = "postgres"
+
+[auth]
+# IMPORTANT: Provide secure secrets via environment variables in production:
+# CMS_AUTH__SESSION_SECRET and CMS_AUTH__JWT_SECRET
+session_expiration_hours = 168
+jwt_expiration_hours = 720
+api_key_prefix = "cms_api_key"
+
+[site]
+seo_cache_max_age = 600
+
+[mcp]
+enabled = false
+max_connections = 200
+rate_limit = 120
+
+[rate_limit]
+enabled = true
+requests_per_second = 100
+burst_size = 200
+max_tracked_clients = 50000
+client_ttl_secs = 600
+
+[security_headers]
+enable_hsts = true
+hsts_max_age = 31536000
+hsts_include_subdomains = true
+enable_x_content_type_options = true
+enable_x_frame_options = true
+x_frame_options = "DENY"
+enable_x_xss_protection = true
+enable_csp = true
+csp = "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+enable_referrer_policy = true
+referrer_policy = "strict-origin-when-cross-origin"
+enable_permissions_policy = true
+permissions_policy = "geolocation=(), microphone=(), camera=(), payment=()"
+
+[admin_origin]
+allowed_origins = [
+    "https://admin.cms.com",
+    "https://app.cms.com",
+    "https://cms.com"
+]
+enforce = true
+allow_localhost = false
